@@ -38,6 +38,34 @@ Exportada desde `src/index.js`:
 - Algoritmos: `LMLSequential`, `KNN`, `NaiveBayes`, `LMLModelFactory`
 - Utilidades: `confusionMatrix`, `transformObjectToMapWithTensors`, `combineMapsOfTensors`, `extendArraysInObject`
 
+## Tokenización Unicode de texto (opcional)
+
+`buildVocabulary(texts, options)` y `setVocabulary(vocabulary, options)` aceptan
+`{ tokenization: 'unicode-v1' }`. En este modo se conservan letras Unicode y números,
+se normalizan los acentos a NFC y se pasa a minúsculas. La puntuación separa palabras:
+`m'han` y `m’han` producen `m`, `han`; el punto medio interno se conserva en
+`cancel·lat` y `col·laboració`. No se eliminan acentos ni se equiparan `año` y `ano`.
+
+```js
+const tokenization = 'unicode-v1';
+const vocabulary = buildVocabulary(['Pánico año força cancel·lat'], { tokenization });
+const features = await bowEncoder(['AÑO força']);
+// vocabulary: ['pánico', 'año', 'força', 'cancel·lat']; features: [[0, 1, 1, 0]]
+features.dispose();
+
+// El consumidor debe guardar el modo junto al vocabulario y restaurar ambos.
+const savedEncoder = JSON.parse(JSON.stringify({ vocabulary, tokenization }));
+setVocabulary(savedEncoder.vocabulary, { tokenization: savedEncoder.tokenization });
+```
+
+Sin opciones se mantiene exactamente el modo anterior (`legacy`), también al cargar
+un vocabulario después de haber usado Unicode. No se cambia automáticamente el editor
+ni se migran modelos existentes. Un modelo entrenado con la tokenización anterior
+debe seguir usando `legacy`; activar Unicode requiere reconstruir el vocabulario y
+reentrenar. El consumidor que active este modo debe guardar y restaurar `tokenization`
+en todos sus formatos de modelo, incluida la exportación/importación. Los modos
+desconocidos lanzan `RangeError` sin cambiar el vocabulario activo.
+
 ## Tests
 
 La estrategia de tests está definida en [`AGENTS.md`](./AGENTS.md) y se implementa con **Vitest**.
